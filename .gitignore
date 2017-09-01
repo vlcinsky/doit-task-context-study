@@ -1,0 +1,4 @@
+*.pyc
+.doit*
+.tox
+__pycache__
