@@ -2,10 +2,6 @@
 Doit TaskContext study
 ======================
 
-:author: Jan Vlcinsky (jan.vlcinsky@tamtamresearch.com)
-:created: 2017-09-01
-
-
 This is a study on how to provide task context data by means of TaskContext class.
 
 This is just a study of possible solution and the name TaskContext is completely
@@ -15,7 +11,7 @@ Challenge:
 
 - have number of actions in single task, which shall share some common
   parameters.
-- propose constructs allowing to share these parameters in clean way.
+- propose constructs allowing to share these parameters in a clean way.
 
 Sample set of tasks:
 
@@ -40,6 +36,9 @@ Note: If you have other python versions, simply modify `tox.ini` file.
 To create the environment run::
 
     $ tox
+
+After installation, cd to the directory with a `dodo.py` file.
+Currently there are more variants.
 
 This creates virtual env in `.tox/py36`. Activate it::
 
