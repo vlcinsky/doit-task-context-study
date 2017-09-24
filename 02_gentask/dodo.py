@@ -38,10 +38,12 @@ class TaskContext(object):
         """path to json file with alldata information"""
 
     def ensure_target_dir(self):
+        """Ensure the target dir exists, create it, if missing"""
         self.target_dir.mkdir(parents=True, exist_ok=True)
         return True
 
     def remove_target_dir(self):
+        """Remove the target dir. Will fail if not empty."""
         if self.target_dir.exists():
             self.target_dir.rmdir()
         return True
@@ -73,7 +75,12 @@ class TaskContext(object):
             json.dump(data, f)
         return True
 
-    def task_report(self, topics, clean=True):
+    def task_report(self, topics):
+        """Generate task dictionary for doit, reporting selected topics.
+        Args:
+            topics: list of strings "size", "mtime", "alldata". Whichever
+                keyword is found, related type of JSON report is created.
+        """
         topic_action_target = {
             "size": (self.write_size, self.target_size_path),
             "mtime": (self.write_mtime, self.target_mtime_path),
