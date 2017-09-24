@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from doit.task import clean_targets
 
 
 FILE_TEXT_PLAN = [("alfa.txt", "you are alfa"),
@@ -7,77 +8,66 @@ FILE_TEXT_PLAN = [("alfa.txt", "you are alfa"),
 
 
 class TaskContext(object):
-    """Class providing context parameters and handy methods related
+    """Class providing context parameters and handy methods related to
     reporting parameters of source files by means of creating
     JSON files in report directory.
     """
-    def __init__(self, root, source_name, target_name, priority):
+    def __init__(self, source_name, root, report_dir_prefix, priority):
         """
-        root (pathlib.Path): root directory where are all files located
+        root (pathlib.Path): root directory where are all source files located
         source_name (str): base name of file to use as input
-        target_name (str): name of root subdir to write targest to
+        report_dir_prefix (str): prefix for directory to write reports to
         priority (int): number to consider
         """
         self.root = root
-        self.source_name = source_name
-        self.target_name = target_name
         self.priority = priority
 
-    @property
-    def source_path(self):
-        """pathlib.Path to source file"""
-        return self.root / self.source_name
+        self.source = self.root / source_name
+        """path to source file (derived from root + source_name)"""
 
-    @property
-    def target_dir(self):
-        """pathlib.Path target dir.
+        self.target_dir = self.root / (report_dir_prefix + source_name)
+        """target directory"""
 
-        If the directory does not exists, it attempts to create it.
-        """
-        path = self.root / self.target_name
-        path.mkdir(parents=True, exist_ok=True)
-        return path
+        self.target_size_path = self.target_dir / "size.json"
+        """path to json file with size information"""
 
-    @property
-    def target_size_path(self):
-        """pathlib.Path json with size information"""
-        return self.target_dir / "size.json"
+        self.target_mtime_path = self.target_dir / "mtime.json"
+        """path to json file with mtime information"""
 
-    @property
-    def target_mtime_path(self):
-        """pathlib.Path json with mtime information"""
-        return self.target_dir / "mtime.json"
+        self.target_alldata_path = self.target_dir / "alldata.json"
+        """path to json file with alldata information"""
 
-    @property
-    def target_alldata_path(self):
-        """pathlib.Path to json with alldata information"""
-        return self.target_dir / "alldata.json"
+    def ensure_target_dir(self):
+        self.target_dir.mkdir(parents=True, exist_ok=True)
+        return True
+
+    def remove_target_dir(self):
+        if self.target_dir.exists():
+            self.target_dir.rmdir()
+        return True
 
     def write_size(self):
         """write to {target}/size.json information about source size"""
-        source_path = self.source_path
-        data = {"name": str(source_path),
-                "size": source_path.stat().st_size}
+        data = {"name": str(self.source),
+                "size": self.source.stat().st_size}
         with self.target_size_path.open("w") as f:
             json.dump(data, f)
         return True
 
     def write_mtime(self):
         """write to {target}/mtime.json information about source mtime"""
-        source_path = self.source_path
-        data = {"name": str(source_path),
-                "mtime": source_path.stat().st_mtime}
+        data = {"name": str(self.source),
+                "mtime": self.source.stat().st_mtime}
         with self.target_mtime_path.open("w") as f:
             json.dump(data, f)
         return True
 
     def write_alldata(self):
         """write to {target}/alldata.json all information about source"""
-        source_path = self.source_path
-        source_path_st = source_path.stat()
-        data = {"name": str(source_path),
-                "size": source_path_st.st_size,
-                "mtime": source_path_st.st_mtime,
+        source_stat = self.source.stat()
+        data = {"name": str(self.source),
+                "size": source_stat.st_size,
+                "mtime": source_stat.st_mtime,
                 "priority": self.priority}
         with self.target_alldata_path.open("w") as f:
             json.dump(data, f)
@@ -106,58 +96,58 @@ def task_create_file():
 
 def task_report_file_size():
     """Report file size by JSON file in report directory."""
-    root = Path()  # this is current directory
     for file_name, _ in FILE_TEXT_PLAN:
-        source = Path(file_name)
-        report_dir = "report_file_size-" + source.name
-        priority = 123
-        context = TaskContext(root, file_name, report_dir, priority)
+        context = TaskContext(file_name,
+                              root=Path(),
+                              report_dir_prefix="report_file_size_",
+                              priority=123)
         yield {
-            "name": source.name,
-            "file_dep": [source],
-            "actions": [(context.write_size)],
+            "name": file_name,
+            "file_dep": [context.source],
+            "actions": [context.ensure_target_dir,
+                        context.write_size],
             "targets": [context.target_size_path],
-            "clean": True,
+            "clean": [clean_targets, context.remove_target_dir],
         }
 
 
 def task_report_file_mtime():
     """Report file mtime by JSON file in report directory.
     """
-    root = Path()  # this is current directory
     for file_name, _ in FILE_TEXT_PLAN:
-        source = Path(file_name)
-        report_dir = "report_file_mtime-" + source.name
-        priority = 123
-        context = TaskContext(root, file_name, report_dir, priority)
+        context = TaskContext(file_name,
+                              root=Path(),
+                              report_dir_prefix="report_file_mtime_",
+                              priority=123)
         yield {
-            "name": source.name,
-            "file_dep": [source],
-            "actions": [(context.write_mtime)],
+            "name": file_name,
+            "file_dep": [context.source],
+            "actions": [context.ensure_target_dir,
+                        context.write_mtime],
             "targets": [context.target_mtime_path],
-            "clean": True,
+            "clean": [clean_targets, context.remove_target_dir],
         }
 
 
 def task_report_file_complete():
     """Report multiple file parameters into set of JSON files in report dir.
     """
-    root = Path()  # this is current directory
     for file_name, _ in FILE_TEXT_PLAN:
-        source = Path(file_name)
-        report_dir = "report_file__complete-" + source.name
-        priority = 123
-        context = TaskContext(root, file_name, report_dir, priority)
+        context = TaskContext(file_name,
+                              root=Path(),
+                              report_dir_prefix="report_file_complete_",
+                              priority=123)
         yield {
-            "name": source.name,
-            "file_dep": [source],
-            "actions": [(context.write_size),
-                        (context.write_mtime),
-                        (context.write_alldata),
+            "name": file_name,
+            "file_dep": [context.source],
+            "actions": [context.ensure_target_dir,
+                        context.write_size,
+                        context.write_mtime,
+                        context.write_alldata,
                         ],
             "targets": [context.target_size_path,
                         context.target_mtime_path,
                         context.target_alldata_path,
                         ],
-            "clean": True,
+            "clean": [clean_targets, (context.remove_target_dir)],
         }
